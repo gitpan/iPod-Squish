@@ -1,5 +1,44 @@
 #!/usr/bin/env perl
 
+use strict;
+use warnings;
+
+{
+	package iPod::Squish::LogConfig;
+
+	use base qw(Log::Dispatch::Configurator);
+
+	sub new {
+		bless {
+			global => {
+				dispatchers => [qw(screen)],
+			},
+			screen => {
+				class     => 'Log::Dispatch::Screen',
+				min_level => 'notice',
+				stderr    => 1,
+				format    => "%m\n",
+			},
+		}, shift;
+	}
+
+	sub get_attrs {
+		my ( $self, $name ) = @_;
+		$self->{$name};
+	}
+
+	sub get_attrs_global {
+		my $self = shift;
+		$self->{global};
+	}
+
+	sub needs_reload { return }
+
+	use Log::Dispatch::Config;
+
+	Log::Dispatch::Config->configure( __PACKAGE__->new );
+}
+
 use iPod::Squish;
 
 use Memoize;
@@ -31,7 +70,12 @@ unless ( $ipod ) {
 	}
 }
 
-iPod::Squish->new( volume => $ipod )->run; # FIXME MooseX::Getopt?
+chdir $ipod; # force it to stay mounted
+
+
+Log::Dispatch::Config->instance->notice("squishing $ipod");
+
+{ iPod::Squish->new( volume => $ipod )->run && redo }; # FIXME MooseX::Getopt?
 
 __END__
 
